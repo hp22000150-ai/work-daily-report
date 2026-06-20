@@ -583,7 +583,10 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     rows.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
       const priceKey = r.name + (r.spec ? `(${r.spec})` : '');
       const saved = prices.eq[priceKey] || '';
+      const savedNum = parseFloat(saved) || 0;
       const hasDirect = r.directAmount > 0;
+      const initAmt = hasDirect ? r.directAmount : (savedNum > 0 ? Math.round(savedNum * r.days) : 0);
+      const initAmtStr = initAmt > 0 ? fmt(initAmt) + ' 원' : '';
       const tr = document.createElement('tr');
       tr.dataset.type = 'eq';
       tr.dataset.key = priceKey;
@@ -593,7 +596,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
         <td>${r.spec}</td>
         <td>${r.days > 0 ? r.days : '-'}</td>
         <td><input class="price-input" type="text" placeholder="단가 입력" value="${saved}" onchange="recalcRow(this)" oninput="recalcRow(this)"></td>
-        <td><input class="amount-direct" type="text" placeholder="금액" value="${hasDirect ? r.directAmount : ''}" onchange="updateSummary()" oninput="updateSummary()" style="width:100%;padding:5px 6px;border:1px solid ${hasDirect ? '#9bc8e8' : '#ddd'};border-radius:4px;font-size:12px;font-family:inherit;text-align:right;background:${hasDirect ? '#e8f4fd' : '#fffde7'};"></td>
+        <td class="amount-cell" style="font-weight:700;">${initAmtStr}</td>
         <td></td>`;
       frag.appendChild(tr);
     });
@@ -707,13 +710,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     if (price > 0) tr.dataset.directAmount = '';
     const amt = price * qty;
     const amtCell = tr.querySelector('.amount-cell');
-    if (amtCell) {
-      amtCell.textContent = amt > 0 ? fmt(amt) + ' 원' : '';
-    } else {
-      const amtDirect = tr.querySelector('.amount-direct');
-      if (amtDirect && !tr.dataset.directAmount)
-        amtDirect.value = amt > 0 ? Math.round(amt) : '';
-    }
+    if (amtCell) amtCell.textContent = amt > 0 ? fmt(amt) + ' 원' : '';
     updateSummary();
   }
 
@@ -732,7 +729,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
       }
     });
     document.querySelectorAll('#eq-body tr[data-type="eq"]').forEach(tr => {
-      const direct = parseFloat(tr.querySelector('.amount-direct')?.value) || 0;
+      const direct = parseFloat(tr.dataset.directAmount) || 0;
       if (direct > 0) {
         eqTotal += direct;
       } else {
