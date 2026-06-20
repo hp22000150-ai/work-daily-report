@@ -27,7 +27,7 @@ const DD   = pad(now.getDate());                          // 12
 const HH   = pad(now.getHours());                         // 18
 const NN   = pad(now.getMinutes());                       // 40
 
-const displayVer  = `${YYYY}${MM}${DD}.${HH}${NN}`;      // 앱 표시: 20260612.1840
+const displayVer  = `${YY}${MM}${DD}.${HH}${NN}`;        // 앱 표시: 260612.1840
 const semVer      = `${YY}.${parseInt(MM+DD)}.${HH}${NN}`; // package.json: 26.612.1840
 const versionCode = parseInt(`${YY}${MM}${DD}${HH}`);    // Android: 26061218
 const apkFile     = `작업일보_${YYYY}${MM}${DD}_${HH}${NN}.apk`;
@@ -52,12 +52,12 @@ console.log('\n[1] 버전 업데이트');
 
 // mobile.html — 헤더 표시 버전
 patch(path.join(ROOT, 'mobile.html'),
-  [/V \d{8}\.\d{4}|V \d+\.\d+\.\d+/, `V ${displayVer}`]
+  [/V \d{6,8}\.\d{4}|V \d+\.\d+\.\d+/, `V ${displayVer}`]
 );
 
 // index.html — PC 헤더 표시 버전
 patch(path.join(ROOT, 'index.html'),
-  [/V \d{8}\.\d{4}|V \d+\.\d+\.\d+/, `V ${displayVer}`]
+  [/V \d{6,8}\.\d{4}|V \d+\.\d+\.\d+/, `V ${displayVer}`]
 );
 
 // work-daily-report/package.json
