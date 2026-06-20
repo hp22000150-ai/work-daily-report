@@ -1,5 +1,5 @@
 {
-  "buildCommand": null,
-  "installCommand": null,
+  "buildCommand": "echo skip",
+  "installCommand": "echo skip",
   "outputDirectory": "."
 }
