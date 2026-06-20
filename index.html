@@ -1495,7 +1495,7 @@
       if (fpInstance) fpInstance.redraw();
     }
 
-    const EQ_ROWS = 8, MT_ROWS = 12, MAN_ROWS = 22;
+    const EQ_ROWS = 8, MT_ROWS = 13, MAN_ROWS = 24;
     const fmtN = v => { const n = parseFloat(String(v).replace(/,/g,'')); return (v!==''&&v!=null&&!isNaN(n)) ? n.toLocaleString('ko-KR') : (v||''); };
     const E = `<td>&nbsp;</td>`;
     const EB = `<td style="border-right:0.5px solid #aaa;">&nbsp;</td>`;
@@ -1524,7 +1524,7 @@
     })() : '202   년   월   일';
 
     const eqOverflow = eqData.length > 9;
-    const mtOverflow = mtRows.length > 13;
+    const mtOverflow = mtRows.length > 14;
 
     // 사진 HTML — 마지막 페이지 끝에 삽입
     let photoHtml = '';
@@ -1579,8 +1579,8 @@
             <td colspan="5" class="th-group" style="letter-spacing:3px; border-top:1px solid #222;">작 업 계 획</td>
           </tr>
           <tr>
-            <td colspan="5" style="height:52mm; vertical-align:top; text-align:left; padding:6px; white-space:pre-line; border-right:0.5px solid #aaa;">${work||''}</td>
-            <td colspan="5" style="height:52mm; vertical-align:top; text-align:left; padding:6px; white-space:pre-line;">${plan||''}</td>
+            <td colspan="5" style="height:46mm; vertical-align:top; text-align:left; padding:6px; white-space:pre-line; border-right:0.5px solid #aaa;">${work||''}</td>
+            <td colspan="5" style="height:46mm; vertical-align:top; text-align:left; padding:6px; white-space:pre-line;">${plan||''}</td>
           </tr>
         </tbody>
       </table>
