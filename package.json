@@ -1,0 +1,12 @@
+{
+  "name": "work-daily-report",
+  "version": "26.612.2039",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "gen-icons": "node gen-icons.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0"
+  }
+}

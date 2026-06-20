@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>정산 보고서</title>
+<style>
+:root { --green:#1a3a2a; --green-mid:#52b788; --green-light:#d8f3dc; --brown:#7a4f2e; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; font-size:13px; }
+
+/* ===== 화면 레이아웃 ===== */
+.app { max-width:1200px; margin:0 auto; padding:20px; }
+
+.top-bar { background:var(--green); color:white; border-radius:10px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.top-bar h1 { font-size:16px; font-weight:700; }
+.top-links a { color:rgba(255,255,255,0.75); font-size:12px; text-decoration:none; border:1px solid rgba(255,255,255,0.4); border-radius:4px; padding:3px 10px; margin-left:6px; }
+
+.filter-panel { background:white; border-radius:10px; padding:12px 16px; margin-bottom:16px; box-shadow:0 1px 6px rgba(0,0,0,0.07); display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+.fg { display:flex; flex-direction:column; gap:4px; }
+.fg label { font-size:11px; font-weight:700; color:#2d6a4f; }
+.fg input, .fg select { padding:7px 8px; border:1.5px solid #ddd; border-radius:6px; font-size:12px; font-family:inherit; background:#fafafa; outline:none; min-width:100px; }
+.fg input:focus, .fg select:focus { border-color:var(--green-mid); background:white; }
+.btn-calc { padding:8px 14px; background:var(--green); color:white; border:none; border-radius:6px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; }
+.btn-calc:hover { background:#2d6a4f; }
+.btn-save-price { padding:8px 10px; background:#e8f4fd; color:#1a6496; border:1.5px solid #9bc8e8; border-radius:6px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; }
+
+.result-area { display:none; }
+.result-area.show { display:block; }
+
+.sec-title { font-size:13px; font-weight:700; color:var(--brown); border-bottom:2px solid var(--brown); padding-bottom:5px; margin:16px 0 8px; letter-spacing:1px; }
+
+.tbl { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-bottom:4px; }
+.tbl th { background:var(--green); color:white; padding:8px 10px; text-align:center; font-size:12px; font-weight:700; }
+.tbl td { border-bottom:1px solid #eee; padding:7px 10px; text-align:center; font-size:12px; }
+.tbl td.left { text-align:left; }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl tr:hover td { background:#f9f9f9; }
+.tbl .subtotal td { background:#f0f7ee; font-weight:700; border-top:2px solid var(--green-mid); }
+.tbl .total-row td { background:var(--green); color:white; font-weight:700; font-size:13px; }
+.price-input { width:100%; padding:5px 6px; border:1px solid #ddd; border-radius:4px; font-size:12px; font-family:inherit; text-align:right; background:#fffde7; }
+.price-input:focus { outline:none; border-color:var(--green-mid); }
+
+.summary-box { background:white; border-radius:10px; padding:16px 20px; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-top:12px; }
+.summary-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; font-size:13px; }
+.summary-row:last-child { border-bottom:none; font-size:15px; font-weight:700; color:var(--green); padding-top:10px; }
+
+.action-bar { display:flex; gap:8px; margin-top:16px; }
+.btn-print { padding:10px 20px; background:var(--brown); color:white; border:none; border-radius:6px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
+
+/* ===== 인쇄 ===== */
+@media print {
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { background:white; font-size:10px; }
+  .top-bar, .filter-panel, .action-bar, .btn-save-price { display:none !important; }
+  .app { padding:0; max-width:100%; }
+  .result-area { display:block !important; }
+  .print-header { display:block !important; }
+  @page { size:A4 portrait; margin:12mm 14mm; }
+  .tbl th { font-size:9px; padding:5px 6px; }
+  .tbl td { font-size:9px; padding:4px 6px; }
+  .price-input { border:none; background:transparent; font-size:9px; }
+  .summary-box { box-shadow:none; border:1px solid #ccc; }
+}
+
+.print-header { display:none; }
+
+/* 인페이지 확인 모달 */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:5000; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:white; border-radius:12px; padding:24px 28px; max-width:380px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.22); }
+.modal-box p { font-size:14px; line-height:1.7; color:#333; margin-bottom:18px; }
+.modal-btns { display:flex; gap:8px; justify-content:flex-end; }
+.modal-btns button { padding:8px 18px; border-radius:6px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; border:1.5px solid; }
+.modal-btn-ok { background:#1a3a2a; color:white; border-color:#1a3a2a; }
+.modal-btn-cancel { background:white; color:#555; border-color:#ccc; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top-bar">
+    <h1>📊 정산 보고서<span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 0.610.0</span></h1>
+    <div class="top-links">
+      <a href="index.html">📋 일보</a>
+      <a href="mobile.html" id="link-mobile">📱 모바일</a>
+      <button onclick="openReportHelp()" style="color:rgba(255,255,255,0.75);font-size:12px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:3px 10px;margin-left:6px;cursor:pointer;font-family:inherit;">📖 도움말</button>
+    </div>
+  </div>
+
+  <!-- 정산 도움말 플로팅 창 -->
+  <div id="report-help-win" style="display:none;position:fixed;right:20px;top:60px;width:340px;max-height:calc(100vh - 80px);background:white;border-radius:12px;box-shadow:0 4px 28px rgba(0,0,0,0.18);z-index:200;flex-direction:column;overflow:hidden;border:1px solid #e0e0e0;">
+    <div id="report-help-bar" style="background:#1a3a2a;color:white;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;cursor:grab;user-select:none;">
+      <span style="font-size:13px;font-weight:700;">📊 정산 도움말 <span style="font-size:10px;opacity:0.6;font-weight:400;">— 드래그로 이동</span></span>
+      <button onclick="document.getElementById('report-help-win').style.display='none'" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:5px;padding:2px 10px;font-size:12px;cursor:pointer;font-family:inherit;">✕</button>
+    </div>
+    <div style="overflow-y:auto;padding:14px;font-size:12px;line-height:1.9;color:#444;">
+      <b style="color:#1a3a2a;">📥 데이터 불러오기</b><br>
+      모바일에서 내보낸 JSON 파일을 선택하면 정산 데이터로 불러옵니다.<br>
+      기존 데이터가 있으면 <b>초기화 후 새로 불러오기</b> 또는 <b>기존에 추가</b>를 선택할 수 있습니다.<br>
+      여러 파일을 한번에 선택해도 됩니다.<br><br>
+
+      <b style="color:#1a3a2a;">📂 data 폴더 불러오기</b><br>
+      Electron 앱 환경에서 사용 가능. data 폴더 안의 JSON 파일 전체를 한번에 불러옵니다.<br><br>
+
+      <b style="color:#1a3a2a;">기간 / 공사명 필터</b><br>
+      시작일·종료일·공사명을 설정하면 해당 조건의 데이터만 집계합니다.<br>
+      공사명을 선택하지 않으면 전체 현장을 합산합니다.<br><br>
+
+      <b style="color:#1a3a2a;">👷 인력 정산</b><br>
+      기간 내 일보에서 성명·직종별 공수를 자동 합산합니다.<br>
+      단가 입력 → <b>합계 = 공수 × 단가</b> 자동 계산.<br><br>
+
+      <b style="color:#1a3a2a;">🚜 장비 정산</b><br>
+      장비명별 투입 시간·일수를 자동 합산합니다.<br>
+      단가 입력 → 합계 자동 계산. <b>부가세 10%</b> 체크박스로 VAT 포함 총액 계산 가능.<br>
+      일보에 금액이 직접 입력된 경우 해당 금액을 그대로 사용합니다.<br><br>
+
+      <b style="color:#1a3a2a;">💾 단가 저장</b><br>
+      입력한 단가를 저장하면 다음 방문 시 자동으로 불러와집니다.<br>
+      <b style="color:#dc2626;">저장 버튼을 누르지 않으면 단가가 유지되지 않습니다.</b><br><br>
+
+      <b style="color:#1a3a2a;">📦 통합 파일로 저장</b><br>
+      불러온 데이터를 하나의 JSON 파일로 합쳐서 저장합니다. 데이터 백업·이관에 활용하세요.<br><br>
+
+      <b style="color:#1a3a2a;">🖨️ PDF 인쇄</b><br>
+      헤더·필터 영역은 숨겨지고 정산 결과만 인쇄됩니다.
+    </div>
+  </div>
+
+  <!-- 데이터 없을때 안내 -->
+  <div id="no-data-msg" style="display:none;background:#fff3cd;border:1.5px solid #ffc107;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#856404;font-weight:700;">
+    ⚠️ 먼저 <b>📥 데이터 불러오기</b> 또는 <b>📂 data 폴더 불러오기</b>로 데이터를 가져와 주세요.
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-panel">
+    <div class="fg"><label>공사명</label><select id="r-project"><option value="">전체</option></select></div>
+    <div class="fg" id="company-fg" style="display:none"><label>시공사</label><span id="r-company" style="padding:6px 8px;font-size:12px;color:#333;background:#f0f7ee;border-radius:6px;border:1.5px solid #b7e4c7;min-width:80px;display:inline-block;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;"></span></div>
+    <div class="fg"><label>시작일</label><input id="r-from" type="date" disabled></div>
+    <div class="fg"><label>종료일</label><input id="r-to" type="date" disabled></div>
+    <button class="btn-calc" id="btn-calculate" onclick="calculate()" disabled style="opacity:0.4;cursor:not-allowed;">📊 정산하기</button>
+    <button class="btn-save-price" onclick="savePrices()">💾 단가 저장</button>
+    <button class="btn-save-price" onclick="document.getElementById('import-transfer-input').click()" style="background:#fff3cd;color:#856404;border-color:#ffc107;">📥 데이터 불러오기</button>
+    <input type="file" id="import-transfer-input" accept=".json" multiple style="display:none" onchange="importTransferData(this)">
+    <button class="btn-save-price" onclick="exportMerged()" style="background:#f3e8fd;color:#5a1a8a;border-color:#c8a0e8;">📦 통합 파일로 저장</button>
+    <button id="btn-data-folder" class="btn-save-price" onclick="loadFromDataDir()" style="display:none;background:#e8f4fd;color:#1a6496;border-color:#9bc8e8;">📂 data 폴더 불러오기</button>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-area" id="result-area">
+
+    <!-- 인쇄용 헤더 -->
+    <div class="print-header" id="print-header"></div>
+
+    <!-- 인력 정산 -->
+    <div class="sec-title">👷 인력 투입 정산</div>
+    <table class="tbl" id="man-tbl">
+      <thead>
+        <tr>
+          <th style="width:12%">직종</th>
+          <th style="width:14%">성명</th>
+          <th style="width:9%">공수</th>
+          <th style="width:9%">횟수/건수</th>
+          <th style="width:18%">단가 (원/일)</th>
+          <th style="width:18%">금액 (원)</th>
+          <th style="width:20%">비고</th>
+        </tr>
+      </thead>
+      <tbody id="man-body"></tbody>
+    </table>
+
+    <!-- 장비 정산 -->
+    <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>🚜 장비 투입 정산</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#856404;cursor:pointer;border:1.5px solid #ffc107;border-radius:5px;padding:3px 8px;background:#fff3cd;">
+        <input type="checkbox" id="vat-check" onchange="updateSummary()" style="width:13px;height:13px;cursor:pointer;"> 부가세 10%
+      </label>
+    </div>
+    <table class="tbl" id="eq-tbl">
+      <thead>
+        <tr>
+          <th style="width:18%">장비명</th>
+          <th style="width:12%">규격</th>
+          <th style="width:9%">횟수/건수</th>
+          <th style="width:18%">단가 (원/일)</th>
+          <th style="width:18%">금액 (원)</th>
+          <th style="width:25%">비고</th>
+        </tr>
+      </thead>
+      <tbody id="eq-body"></tbody>
+    </table>
+
+    <!-- 합계 -->
+    <div class="summary-box" id="summary-box">
+      <div class="summary-row"><span>👷 인력 소계</span><span id="sum-man">0 원</span></div>
+      <div class="summary-row"><span>🚜 장비 소계</span><span id="sum-eq">0 원</span></div>
+      <div class="summary-row" id="sum-vat-row" style="display:none;color:#856404;"><span>　부가세 (10%)</span><span id="sum-vat">0 원</span></div>
+      <div class="summary-row"><span>합 계</span><span id="sum-total">0 원</span></div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-print" onclick="window.print()">🖨️ 인쇄 / PDF</button>
+      <button class="btn-print" onclick="exportExcel()" style="background:#1a6496;">📊 엑셀 내보내기</button>
+    </div>
+  </div>
+
+</div>
+<script>
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a3a2a;color:white;padding:11px 22px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;pointer-events:none;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  // 포커스를 빼앗지 않는 인페이지 확인 모달
+  function showConfirm(msg, okLabel, cancelLabel, onOk, onCancel) {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay open';
+    ov.innerHTML = `<div class="modal-box"><p>${msg.replace(/\n/g,'<br>')}</p><div class="modal-btns"><button class="modal-btn-cancel">${cancelLabel||'취소'}</button><button class="modal-btn-ok">${okLabel||'확인'}</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('.modal-btn-ok').onclick = () => { ov.remove(); if (onOk) onOk(); };
+    ov.querySelector('.modal-btn-cancel').onclick = () => { ov.remove(); if (onCancel) onCancel(); };
+  }
+
+  function fmt(n) { return Math.round(n).toLocaleString('ko-KR'); }
+  function getDailyLogs() {
+    const logs = JSON.parse(localStorage.getItem('daily_logs')||'{}');
+    const flat = {};
+    Object.entries(logs).forEach(([k, v]) => {
+      if (v && typeof v === 'object' && !v.date && !v.man) {
+        // 월별 중첩 구조: "공사명||YYYY-MM" 또는 "YYYY-MM" → { "DD": 데이터 }
+        const hasP = k.includes('||'), proj = hasP ? k.split('||')[0] : '', month = hasP ? k.split('||')[1] : k;
+        if (/^\d{4}-\d{2}$/.test(month)) {
+          Object.entries(v).forEach(([day, dd]) => {
+            const date = `${month}-${day.padStart(2,'0')}`;
+            // key의 공사명과 log.project 불일치 시 key 기준으로 보정
+            if (proj && !dd.project) dd = { ...dd, project: proj };
+            flat[proj ? `${proj}||${date}` : date] = dd;
+          });
+          return;
+        }
+      }
+      // 날짜 형식이 아닌 오염된 키(eq, man, date 등)는 건너뜀
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) || k.includes('||')) flat[k] = v;
+    });
+    return flat;
+  }
+  function getPrices() { return JSON.parse(localStorage.getItem('unit_prices')||'{"man":{},"eq":{}}'); }
+
+  // 모바일 전송 데이터 불러오기 (daily_logs 병합)
+  function importTransferData(input) {
+    const files = [...input.files]; if (!files.length) return;
+    const existing = JSON.parse(localStorage.getItem('daily_logs') || '{}');
+    const hasData = Object.keys(existing).length > 0;
+    function doImport(reset) {
+      if (reset) localStorage.removeItem('daily_logs');
+      let totalCnt = 0, doneCnt = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          try { totalCnt += mergeLogData(JSON.parse(e.target.result)); } catch { /* skip */ }
+          if (++doneCnt === files.length) {
+            checkDataReady();
+            input.value = '';
+            showToast(`✅ ${files.length}개 파일, ${totalCnt}건 불러왔습니다`);
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+    if (hasData) {
+      showConfirm('기존 데이터를 초기화하고 새로 불러올까요?', '초기화 후 불러오기', '기존에 추가',
+        () => doImport(true), () => doImport(false));
+    } else {
+      doImport(false);
+    }
+  }
+
+  // Electron 환경 감지 후 버튼 표시
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.electronAPI) document.getElementById('btn-data-folder').style.display = '';
+  });
+
+  async function loadFromDataDir() {
+    if (!window.electronAPI) return;
+    const files = await window.electronAPI.dataList();
+    if (!files.length) { showToast('data 폴더에 JSON 파일이 없습니다.'); return; }
+    let totalCnt = 0;
+    for (const fname of files) {
+      try {
+        const raw = await window.electronAPI.dataRead(fname);
+        const data = JSON.parse(raw);
+        totalCnt += mergeLogData(data);
+      } catch { /* skip invalid */ }
+    }
+    checkDataReady();
+    const dirPath = await window.electronAPI.dataDirPath();
+    showToast(`✅ ${files.length}개 파일, ${totalCnt}건 불러왔습니다`);
+  }
+
+  function mergeLogData(data) {
+    // 단일 일보 파일 (기존 내보내기 형식: { date, man, eq, ... })
+    if (data.date && /^\d{4}-\d{2}-\d{2}$/.test(data.date) && Array.isArray(data.man)) {
+      const existing = JSON.parse(localStorage.getItem('daily_logs')||'{}');
+      const month = data.date.slice(0,7), day = data.date.slice(8,10);
+      const mKey = data.project ? `${data.project}||${month}` : month;
+      if (!existing[mKey] || typeof existing[mKey] !== 'object') existing[mKey] = {};
+      existing[mKey][day] = data;
+      localStorage.setItem('daily_logs', JSON.stringify(existing));
+      return 1;
+    }
+    const incoming = data._type === 'daily_logs_transfer' ? data.daily_logs : data.daily_logs || data;
+    if (!incoming || typeof incoming !== 'object') return 0;
+    const existing = JSON.parse(localStorage.getItem('daily_logs')||'{}');
+    Object.entries(incoming).forEach(([k, v]) => {
+      const hasP = k.includes('||'), proj = hasP ? k.split('||')[0] : '', date = hasP ? k.split('||')[1] : k;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { existing[k] = v; return; }
+      const month = date.slice(0,7), day = date.slice(8,10);
+      const mKey = proj ? `${proj}||${month}` : month;
+      if (!existing[mKey] || typeof existing[mKey] !== 'object') existing[mKey] = {};
+      existing[mKey][day] = v;
+    });
+    localStorage.setItem('daily_logs', JSON.stringify(existing));
+    if (data.projects) {
+      const cur = JSON.parse(localStorage.getItem('projects')||'[]');
+      localStorage.setItem('projects', JSON.stringify([...new Set([...cur, ...data.projects])]));
+    }
+    if (data.companies) {
+      const cur = JSON.parse(localStorage.getItem('companies')||'[]');
+      localStorage.setItem('companies', JSON.stringify([...new Set([...cur, ...data.companies])]));
+    }
+    return Object.keys(incoming).length;
+  }
+
+  async function exportMerged() {
+    const logs = getDailyLogs();
+    if (!Object.keys(logs).length) { showToast('저장된 일보 데이터가 없습니다.'); return; }
+    const payload = {
+      _type: 'daily_logs_transfer',
+      _date: new Date().toISOString(),
+      daily_logs: logs,
+      projects:  JSON.parse(localStorage.getItem('projects')||'[]'),
+      companies: JSON.parse(localStorage.getItem('companies')||'[]'),
+    };
+    const fname = `일보통합_${new Date().toISOString().slice(0,10)}.json`;
+    const content = JSON.stringify(payload, null, 2);
+    if (window.electronAPI) {
+      const dirPath = await window.electronAPI.dataSave(fname, content);
+      showToast(`✅ 저장됐습니다: ${fname}`);
+    } else {
+      const blob = new Blob([content], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  }
+
+  // 공사명·시공사 목록 로드
+  function loadProjects() {
+    const logs = getDailyLogs();
+    const logVals = Object.values(logs);
+
+    // 공사명: 로그값의 project 또는 키의 || 앞부분
+    const rawLogs = JSON.parse(localStorage.getItem('daily_logs')||'{}');
+    const projFromKeys = Object.keys(rawLogs)
+      .filter(k => k.includes('||'))
+      .map(k => k.split('||')[0])
+      .filter(Boolean);
+    const projFromVals = logVals.map(l=>l.project).filter(Boolean);
+    const projects = [...new Set([...projFromVals, ...projFromKeys])].sort();
+
+    const sel = document.getElementById('r-project');
+    sel.innerHTML = '<option value="">전체</option>' + projects.map(p=>`<option value="${p}">${p}</option>`).join('');
+    if (projects.length === 1) sel.value = projects[0];
+
+    // 시공사: 로그값의 company
+    const companies = [...new Set(logVals.map(l=>l.company).filter(Boolean))].sort();
+    const compFg = document.getElementById('company-fg');
+    const compEl = document.getElementById('r-company');
+    if (compFg && compEl) {
+      if (companies.length) {
+        compEl.textContent = companies.join(', ');
+        compEl.title = companies.join(', ');
+        compFg.style.display = '';
+      } else {
+        compFg.style.display = 'none';
+      }
+    }
+  }
+
+  // 기간 자동 설정 (데이터 로드 후)
+  function autoSetDateRange() {
+    const logs = getDailyLogs();
+    const dates = Object.values(logs).map(l=>l.date).filter(d=>d&&/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    if (!dates.length) return;
+    const rFrom = document.getElementById('r-from');
+    const rTo   = document.getElementById('r-to');
+    if (!rFrom.value) rFrom.value = dates[0];
+    if (!rTo.value)   rTo.value   = dates[dates.length - 1];
+  }
+
+  function calculate() {
+    document.getElementById('btn-calculate').blur();
+    const from = document.getElementById('r-from').value;
+    const to   = document.getElementById('r-to').value;
+    const proj = document.getElementById('r-project').value;
+    const logs = getDailyLogs();
+    // 저장된 단가 + 현재 화면에 입력된 단가 병합 (재정산 시 입력값 보존)
+    const prices = getPrices();
+    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
+      const val = parseFloat(tr.querySelector('.price-input')?.value);
+      if (val && tr.dataset.key) prices.man[tr.dataset.key] = val;
+    });
+    document.querySelectorAll('#eq-body tr[data-type="eq"]').forEach(tr => {
+      const val = parseFloat(tr.querySelector('.price-input')?.value);
+      if (val && tr.dataset.key) prices.eq[tr.dataset.key] = val;
+    });
+
+    const filtered = Object.entries(logs).map(([key, log]) => {
+      const date = key.includes('||') ? key.split('||')[1] : key;
+      return [date, log];
+    }).filter(([date, log]) => {
+      if (from && date < from) return false;
+      if (to   && date > to)   return false;
+      if (proj && log.project !== proj) return false;
+      return true;
+    });
+
+    if (!filtered.length) { showToast('해당 기간에 저장된 일보가 없습니다.'); return; }
+
+    // 인력 집계 (성명+직종 기준)
+    const manMap = {};
+    filtered.forEach(([date, log]) => {
+      (log.man||[]).forEach(m => {
+        if (!m.name && !m.job) return;
+        const key = (m.name||'미입력') + '||' + (m.job||'');
+        if (!manMap[key]) manMap[key] = { job:m.job||'', name:m.name||'미입력', gongsu:0, days:0 };
+        const g = parseFloat(m.gongsu||0);
+        manMap[key].gongsu += g;
+        if (g > 0) manMap[key].days++;
+      });
+    });
+
+    // 장비 집계 (장비명+규격 기준)
+    const eqMap = {};
+    filtered.forEach(([date, log]) => {
+      (log.eq||[]).forEach(e => {
+        if (!e.name) return;
+        const key = e.name + '||' + (e.spec||'');
+        if (!eqMap[key]) eqMap[key] = { name:e.name, spec:e.spec||'', hours:0, days:0, directAmount:0 };
+        const h = parseFloat(e.today||0);
+        eqMap[key].hours += h;
+        const amt = parseFloat(e.amount||0);
+        eqMap[key].days++;
+        eqMap[key].directAmount += amt;
+      });
+    });
+
+    // result-area를 먼저 show → 브라우저가 이 시점에 페인트
+    // 테이블 렌더링은 다음 이벤트 루프 태스크(setTimeout 0)로 분리
+    // → JS 태스크 분리 없이 show+렌더를 같이 하면 브라우저가 한꺼번에 레이아웃 계산해 입력이 수초간 막힘
+    document.getElementById('result-area').classList.add('show');
+
+    const dateRange = (from||'전체') + ' ~ ' + (to||'전체');
+    const companies = [...new Set(filtered.map(([, log]) => log.company).filter(Boolean))];
+    const companyStr = companies.length ? companies.join(', ') : '';
+    document.getElementById('print-header').innerHTML = `
+      <div style="text-align:center;margin-bottom:10px;">
+        <div style="font-size:22px;font-weight:800;letter-spacing:8px;margin-bottom:4px;">정  산  서</div>
+        <div style="font-size:12px;color:#555;">공사명: ${proj||'전체'}${companyStr ? ' &nbsp;|&nbsp; 시공사: '+companyStr : ''} &nbsp;|&nbsp; 기간: ${dateRange}</div>
+      </div>`;
+
+    const manRows = Object.values(manMap);
+    const eqRows  = Object.values(eqMap);
+    setTimeout(() => {
+      renderManTable(manRows, prices);
+      renderEqTable(eqRows, prices);
+      updateSummary();
+      // Electron: 렌더링 완료 후 result-area로 포커스 이동 → price-input 첫 클릭 즉시 반응
+      const ra = document.getElementById('result-area');
+      ra.setAttribute('tabindex', '-1');
+      ra.focus({ preventScroll: true });
+    }, 0);
+  }
+
+  function renderManTable(rows, prices) {
+    const tbody = document.getElementById('man-body');
+    const frag = document.createDocumentFragment();
+    rows.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+      const priceKey = r.name;
+      const saved = prices.man[priceKey] || '';
+      const savedNum = parseFloat(saved) || 0;
+      const gongsuStr = r.gongsu % 1 === 0 ? r.gongsu.toFixed(0) : r.gongsu.toFixed(1);
+      const amt = savedNum * r.gongsu;
+      const amtStr = amt > 0 ? fmt(amt) + ' 원' : '';
+      const tr = document.createElement('tr');
+      tr.dataset.type = 'man';
+      tr.dataset.key = priceKey;
+      tr.innerHTML = `
+        <td class="left">${r.job}</td>
+        <td class="left">${r.name}</td>
+        <td>${gongsuStr}</td>
+        <td>${r.days}</td>
+        <td><input class="price-input" type="text" placeholder="단가 입력" value="${saved}" onchange="recalcRow(this)" oninput="recalcRow(this)"></td>
+        <td class="amount-cell" style="font-weight:700;">${amtStr}</td>
+        <td></td>`;
+      frag.appendChild(tr);
+    });
+    const sub = document.createElement('tr');
+    sub.className = 'subtotal';
+    sub.id = 'man-subtotal';
+    sub.innerHTML = `<td colspan="5" style="text-align:right;">인력 소계</td><td id="man-sub-amt" style="font-weight:700;"></td><td></td>`;
+    frag.appendChild(sub);
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+  }
+
+  function renderEqTable(rows, prices) {
+    const tbody = document.getElementById('eq-body');
+    const frag = document.createDocumentFragment();
+    rows.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+      const priceKey = r.name + (r.spec ? `(${r.spec})` : '');
+      const saved = prices.eq[priceKey] || '';
+      const hasDirect = r.directAmount > 0;
+      const tr = document.createElement('tr');
+      tr.dataset.type = 'eq';
+      tr.dataset.key = priceKey;
+      tr.dataset.directAmount = hasDirect ? r.directAmount : '';
+      tr.innerHTML = `
+        <td class="left">${r.name}</td>
+        <td>${r.spec}</td>
+        <td>${r.days > 0 ? r.days : '-'}</td>
+        <td><input class="price-input" type="text" placeholder="단가 입력" value="${saved}" onchange="recalcRow(this)" oninput="recalcRow(this)"></td>
+        <td><input class="amount-direct" type="text" placeholder="금액" value="${hasDirect ? r.directAmount : ''}" onchange="updateSummary()" oninput="updateSummary()" style="width:100%;padding:5px 6px;border:1px solid ${hasDirect ? '#9bc8e8' : '#ddd'};border-radius:4px;font-size:12px;font-family:inherit;text-align:right;background:${hasDirect ? '#e8f4fd' : '#fffde7'};"></td>
+        <td></td>`;
+      frag.appendChild(tr);
+    });
+    const sub = document.createElement('tr');
+    sub.className = 'subtotal';
+    sub.id = 'eq-subtotal';
+    sub.innerHTML = `<td colspan="3" style="text-align:right;">장비 소계</td><td></td><td id="eq-sub-amt" style="font-weight:700;"></td><td></td>`;
+    frag.appendChild(sub);
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+  }
+
+  function recalcRow(input) {
+    if (!input) return;
+    const tr = input.closest('tr');
+    if (!tr) return;
+    const price = parseFloat(input.value) || 0;
+    const qty = parseFloat((tr.querySelectorAll('td')[2]?.textContent||'')) || 0;
+    const amt = price * qty;
+
+    const amtCell = tr.querySelector('.amount-cell');
+    if (amtCell) amtCell.textContent = amt > 0 ? fmt(amt) + ' 원' : '';
+
+    updateSummary();
+  }
+
+  function updateSummary() {
+    let manTotal = 0, eqTotal = 0;
+
+    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
+      const price = parseFloat(tr.querySelector('.price-input').value) || 0;
+      const qty = parseFloat(tr.querySelectorAll('td')[2].textContent) || 0;
+      manTotal += price * qty;
+    });
+    document.querySelectorAll('#eq-body tr[data-type="eq"]').forEach(tr => {
+      const direct = parseFloat(tr.querySelector('.amount-direct')?.value) || 0;
+      if (direct > 0) {
+        eqTotal += direct;
+      } else {
+        const price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
+        const qty = parseFloat(tr.querySelectorAll('td')[2].textContent) || 0;
+        eqTotal += price * qty;
+      }
+    });
+
+    const vatChecked = document.getElementById('vat-check')?.checked;
+    const vat = vatChecked ? Math.round(eqTotal * 0.1) : 0;
+
+    const manSubEl = document.getElementById('man-sub-amt');
+    const eqSubEl  = document.getElementById('eq-sub-amt');
+    if (manSubEl) manSubEl.textContent = fmt(manTotal) + ' 원';
+    if (eqSubEl)  eqSubEl.textContent  = fmt(eqTotal)  + ' 원';
+
+    const vatRow = document.getElementById('sum-vat-row');
+    if (vatRow) vatRow.style.display = vatChecked ? '' : 'none';
+    const vatEl = document.getElementById('sum-vat');
+    if (vatEl) vatEl.textContent = fmt(vat) + ' 원';
+
+    document.getElementById('sum-man').textContent   = fmt(manTotal) + ' 원';
+    document.getElementById('sum-eq').textContent    = fmt(eqTotal)  + ' 원';
+    document.getElementById('sum-total').textContent = fmt(manTotal + eqTotal + vat) + ' 원';
+  }
+
+  function exportExcel() {
+    if (!window.XLSX) {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
+      s.onload = () => exportExcel();
+      document.head.appendChild(s);
+      return;
+    }
+    const proj  = document.getElementById('r-project').value || '전체';
+    const from  = document.getElementById('r-from').value  || '';
+    const to    = document.getElementById('r-to').value    || '';
+    const vatOn = document.getElementById('vat-check')?.checked;
+    const header = `공사명: ${proj}  기간: ${from||'전체'} ~ ${to||'전체'}`;
+
+    const wb = XLSX.utils.book_new();
+
+    // ── 인력 정산 시트 ──
+    const manRows = [['공사명: ' + proj + '  기간: ' + (from||'전체') + ' ~ ' + (to||'전체')], [],
+      ['직종', '성명', '공수', '단가(원)', '금액(원)']];
+    let manTotal = 0;
+    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      const price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
+      const gongsu = parseFloat(tds[2]?.textContent) || 0;
+      const amt = price * gongsu;
+      manTotal += amt;
+      manRows.push([tds[0]?.textContent, tds[1]?.textContent, gongsu, price, amt]);
+    });
+    manRows.push([]);
+    manRows.push(['', '', '', '인력 소계', manTotal]);
+
+    // ── 장비 정산 시트 ──
+    const eqRows = [['공사명: ' + proj + '  기간: ' + (from||'전체') + ' ~ ' + (to||'전체')], [],
+      ['장비명', '규격', '횟수/건수', '단가(원)', '금액(원)']];
+    let eqTotal = 0;
+    document.querySelectorAll('#eq-body tr[data-type="eq"]').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      const direct = parseFloat(tr.querySelector('.amount-direct')?.value) || 0;
+      const price  = parseFloat(tr.querySelector('.price-input')?.value) || 0;
+      const days   = parseFloat((tds[2]?.textContent||'')) || 0;
+      const amt    = direct > 0 ? direct : price * days;
+      eqTotal += amt;
+      eqRows.push([tds[0]?.textContent, tds[1]?.textContent, days,
+        direct > 0 ? '직접금액' : price, amt]);
+    });
+    const vat = vatOn ? Math.round(eqTotal * 0.1) : 0;
+    eqRows.push([]);
+    eqRows.push(['', '', '', '장비 소계', eqTotal]);
+    if (vatOn) eqRows.push(['', '', '', '부가세(10%)', vat]);
+
+    // ── 합계 시트 ──
+    const sumRows = [['항목', '금액(원)'],
+      ['인력 소계', manTotal],
+      ['장비 소계', eqTotal]];
+    if (vatOn) sumRows.push(['부가세(10%)', vat]);
+    sumRows.push(['합 계', manTotal + eqTotal + vat]);
+
+    // 시트 생성
+    const wsMan = XLSX.utils.aoa_to_sheet(manRows);
+    const wsEq  = XLSX.utils.aoa_to_sheet(eqRows);
+    const wsSum = XLSX.utils.aoa_to_sheet(sumRows);
+    XLSX.utils.book_append_sheet(wb, wsMan, '인력정산');
+    XLSX.utils.book_append_sheet(wb, wsEq,  '장비정산');
+    XLSX.utils.book_append_sheet(wb, wsSum, '합계');
+
+    const fname = `정산보고서_${proj}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fname);
+  }
+
+  function savePrices() {
+    const prices = { man:{}, eq:{} };
+    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
+      const val = parseFloat(tr.querySelector('.price-input').value);
+      if (val) prices.man[tr.dataset.key] = val;
+    });
+    document.querySelectorAll('#eq-body tr[data-type="eq"]').forEach(tr => {
+      const val = parseFloat(tr.querySelector('.price-input').value);
+      if (val) prices.eq[tr.dataset.key] = val;
+    });
+    localStorage.setItem('unit_prices', JSON.stringify(prices));
+    showToast('단가가 저장되었습니다.');
+  }
+
+  function checkDataReady() {
+    const hasData = Object.keys(getDailyLogs()).length > 0;
+    document.getElementById('r-from').disabled = !hasData;
+    document.getElementById('r-to').disabled = !hasData;
+    const btn = document.getElementById('btn-calculate');
+    btn.disabled = !hasData;
+    btn.style.opacity = hasData ? '1' : '0.4';
+    btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
+    document.getElementById('no-data-msg').style.display = hasData ? 'none' : 'block';
+    if (hasData) { loadProjects(); autoSetDateRange(); }
+  }
+
+  loadProjects();
+  checkDataReady();
+
+  // ===== 도움말 플로팅 창 =====
+  function openReportHelp() {
+    const win = document.getElementById('report-help-win');
+    win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+  }
+  (function initReportHelpDrag() {
+    const win = document.getElementById('report-help-win');
+    const bar = document.getElementById('report-help-bar');
+    let dragging = false, ox = 0, oy = 0;
+    function start(cx, cy) {
+      dragging = true;
+      const r = win.getBoundingClientRect();
+      win.style.right = 'auto'; win.style.bottom = 'auto';
+      win.style.left = r.left + 'px'; win.style.top = r.top + 'px';
+      ox = cx - r.left; oy = cy - r.top;
+      bar.style.cursor = 'grabbing';
+    }
+    function move(cx, cy) {
+      if (!dragging) return;
+      win.style.left = Math.max(0, Math.min(cx - ox, window.innerWidth  - win.offsetWidth )) + 'px';
+      win.style.top  = Math.max(0, Math.min(cy - oy, window.innerHeight - win.offsetHeight)) + 'px';
+    }
+    function end() { dragging = false; bar.style.cursor = 'grab'; }
+    bar.addEventListener('mousedown', e => { start(e.clientX, e.clientY); e.preventDefault(); });
+    document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+    document.addEventListener('mouseup', end);
+  })();
+</script>
+<script>
+  // Electron 환경에서 모바일 링크 숨김
+  if (window.electronAPI) {
+    const ml = document.getElementById('link-mobile');
+    if (ml) ml.style.display = 'none';
+  }
+</script>
+</body>
+</html>

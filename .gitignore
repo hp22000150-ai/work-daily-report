@@ -1,0 +1,5 @@
+node_modules/
+*.exe
+*.apk
+icon.png
+icon-1024.png
