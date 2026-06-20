@@ -135,7 +135,7 @@
   <!-- 입력 패널 -->
   <div class="input-panel">
     <div class="input-panel-header" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>📋 작업일보<br><span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 260620.1846</span></span>
+      <span>📋 작업일보<br><span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 260620.2103</span></span>
 <a href="report.html" style="color:rgba(255,255,255,0.75);font-size:11px;text-decoration:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:2px 8px;margin-left:4px;">📊 정산</a>
       <button onclick="openCalc()" style="color:rgba(255,255,255,0.75);font-size:11px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:2px 8px;margin-left:4px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">🔧 계산기</button>
       <button onclick="openHelp()" style="color:rgba(255,255,255,0.75);font-size:11px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:2px 8px;margin-left:4px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">📖 도움말</button>
@@ -310,7 +310,8 @@
     <b>누계</b> — 같은 공사명·같은 달 기준, 당일 이전 합산 자동 계산. 월이 바뀌면 초기화.<br><br>
 
     <b style="color:#1a3a2a;">🚜 장비 투입</b><br>
-    장비명·기사명·시간 입력. <b>금액(원)</b> 직접 입력 시 정산 시 단가 계산 대신 해당 금액 사용. 금액은 천단위 콤마 표시.<br><br>
+    장비명·기사명·시간 입력. <b>금액(원)</b> 직접 입력 시 정산에서 단가 계산 대신 해당 금액 사용. 금액은 천단위 콤마 표시.<br>
+    <b>누계</b> — 장비명+기사명 조합 기준. 같은 장비라도 기사명이 다르면 별도 누계로 계산됩니다.<br><br>
 
     <b style="color:#1a3a2a;">📦 자재 반입</b><br>
     품명·규격·단위·수량·거래처 입력.<br><br>
