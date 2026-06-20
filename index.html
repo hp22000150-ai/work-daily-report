@@ -1430,7 +1430,7 @@
     });
     return total || '';
   }
-  function calcEqCumul(name, today, currentDate, project) {
+  function calcEqCumul(name, driver, today, currentDate, project) {
     if (!name || !currentDate) return '';
     const month = currentDate.slice(0, 7);
     const raw = getLogs();
@@ -1440,7 +1440,10 @@
     Object.entries(monthLogs).forEach(([day, log]) => {
       const d = `${month}-${day.padStart(2, '0')}`;
       if (d >= currentDate) return;
-      (log.eq || []).forEach(e => { if (e.name === name) total += parseFloat(e.today || 0); });
+      (log.eq || []).forEach(e => {
+        if (e.name === name && (!driver || !e.driver || e.driver === driver))
+          total += parseFloat(e.today || 0);
+      });
     });
     return total || '';
   }
@@ -1478,7 +1481,7 @@
       if (r.nugyeEl) r.nugyeEl.value = r.cumul !== '' ? r.cumul : '';
     });
     eqData.forEach(r => {
-      r.cumul = calcEqCumul(r.name, r.today, date, project);
+      r.cumul = calcEqCumul(r.name, r.driver, r.today, date, project);
       if (r.nugyeEl) r.nugyeEl.value = r.cumul !== '' ? r.cumul : '';
     });
 
