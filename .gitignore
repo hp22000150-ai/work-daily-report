@@ -3,3 +3,8 @@ node_modules/
 *.apk
 icon.png
 icon-1024.png
+도움말_*.pdf
+gen-icons.mjs
+build.mjs
+package-lock.json
+.vercel

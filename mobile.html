@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');</script>
 <title>작업일보 (모바일)</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="/flatpickr.min.css">
 <style>
 :root { --green:#1a3a2a; --green-mid:#52b788; --green-light:#d8f3dc; }
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
@@ -381,7 +381,7 @@ input:disabled, select:disabled, textarea:disabled { background:#f5f5f5 !importa
 
 <div class="mobile-wrap">
 <div class="app-header">
-  <h1>📋 작업일보<br><span style="font-size:11px;font-weight:400;opacity:0.6;margin-left:30px;">V 260620.2103</span></h1>
+  <h1>📋 작업일보<br><span style="font-size:11px;font-weight:400;opacity:0.6;margin-left:30px;">V 260620.2124</span></h1>
   <button onclick="openHelpMobile()" class="header-link" style="background:none;border:1px solid rgba(255,255,255,0.4);cursor:pointer;font-family:inherit;">📖 도움말</button>
   <button onclick="openCalc()" class="header-link" style="background:none;border:1px solid rgba(255,255,255,0.4);cursor:pointer;font-family:inherit;">🔧 계산기</button>
   <button onclick="openSettingsM()" class="header-link" style="background:none;border:1px solid rgba(255,255,255,0.4);cursor:pointer;font-family:inherit;">⚙️ 기본설정</button>
@@ -614,13 +614,13 @@ input:disabled, select:disabled, textarea:disabled { background:#f5f5f5 !importa
 
 <datalist id="names-datalist"></datalist>
 <datalist id="equip-datalist"></datalist>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="/flatpickr.min.js"></script>
 <script src="html2canvas.min.js" onerror="void(0)"></script>
 <script src="jspdf.umd.min.js" onerror="void(0)"></script>
 <script>
   // ===== 헬퍼 =====
-  const getLogs = () => JSON.parse(localStorage.getItem('daily_logs') || '{}');
-  const setLogs = v  => localStorage.setItem('daily_logs', JSON.stringify(v));
+  const getLogs = () => { try { return JSON.parse(localStorage.getItem('daily_logs') || '{}'); } catch { return {}; } };
+  const setLogs = v  => { try { localStorage.setItem('daily_logs', JSON.stringify(v)); } catch(e) { alert('저장 공간이 부족합니다. 오래된 일보를 백업 후 삭제해 주세요.\n(' + e.message + ')'); } };
   const getProj = () => document.getElementById('i-project').value || document.getElementById('i-project-select').value;
 
   // ===== 월별 저장 구조 =====

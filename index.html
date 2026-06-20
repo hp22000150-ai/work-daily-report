@@ -135,7 +135,7 @@
   <!-- 입력 패널 -->
   <div class="input-panel">
     <div class="input-panel-header" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>📋 작업일보<br><span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 260620.2103</span></span>
+      <span>📋 작업일보<br><span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 260620.2124</span></span>
 <a href="report.html" style="color:rgba(255,255,255,0.75);font-size:11px;text-decoration:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:2px 8px;margin-left:4px;">📊 정산</a>
       <button onclick="openCalc()" style="color:rgba(255,255,255,0.75);font-size:11px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:2px 8px;margin-left:4px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">🔧 계산기</button>
       <button onclick="openHelp()" style="color:rgba(255,255,255,0.75);font-size:11px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:2px 8px;margin-left:4px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">📖 도움말</button>
@@ -1345,8 +1345,8 @@
   function td(val, cls='') { return `<td class="${cls}">${val||'&nbsp;'}</td>`; }
 
   // ===== 헬퍼 =====
-  const getLogs = () => JSON.parse(localStorage.getItem('daily_logs') || '{}');
-  const setLogs = v  => localStorage.setItem('daily_logs', JSON.stringify(v));
+  const getLogs = () => { try { return JSON.parse(localStorage.getItem('daily_logs') || '{}'); } catch { return {}; } };
+  const setLogs = v  => { try { localStorage.setItem('daily_logs', JSON.stringify(v)); } catch(e) { alert('저장 공간이 부족합니다. 오래된 일보를 백업 후 삭제해 주세요.\n(' + e.message + ')'); } };
   const getProj = () => document.getElementById('i-project').value || document.getElementById('i-project-select').value;
   const getComp = () => document.getElementById('i-company').value || document.getElementById('i-company-select').value;
 
