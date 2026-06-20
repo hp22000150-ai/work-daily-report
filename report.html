@@ -86,7 +86,6 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     <h1>📊 정산 보고서<span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 0.610.0</span></h1>
     <div class="top-links">
       <a href="index.html">📋 일보</a>
-      <a href="mobile.html" id="link-mobile">📱 모바일</a>
       <button onclick="openReportHelp()" style="color:rgba(255,255,255,0.75);font-size:12px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:3px 10px;margin-left:6px;cursor:pointer;font-family:inherit;">📖 도움말</button>
     </div>
   </div>
@@ -728,13 +727,6 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
     document.addEventListener('mouseup', end);
   })();
-</script>
-<script>
-  // Electron 환경에서 모바일 링크 숨김
-  if (window.electronAPI) {
-    const ml = document.getElementById('link-mobile');
-    if (ml) ml.style.display = 'none';
-  }
 </script>
 </body>
 </html>
