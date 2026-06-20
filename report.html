@@ -707,7 +707,13 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     if (price > 0) tr.dataset.directAmount = '';
     const amt = price * qty;
     const amtCell = tr.querySelector('.amount-cell');
-    if (amtCell) amtCell.textContent = amt > 0 ? fmt(amt) + ' 원' : '';
+    if (amtCell) {
+      amtCell.textContent = amt > 0 ? fmt(amt) + ' 원' : '';
+    } else {
+      const amtDirect = tr.querySelector('.amount-direct');
+      if (amtDirect && !tr.dataset.directAmount)
+        amtDirect.value = amt > 0 ? Math.round(amt) : '';
+    }
     updateSummary();
   }
 
