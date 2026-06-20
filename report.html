@@ -41,6 +41,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
 .tbl tr:hover td { background:#f9f9f9; }
 .tbl .subtotal td { background:#f0f7ee; font-weight:700; border-top:2px solid var(--green-mid); }
 .tbl .total-row td { background:var(--green); color:white; font-weight:700; font-size:13px; }
+.tbl .man-person-sub td { background:#f8f8f4; border-top:1px dashed #c8e6c9; font-size:11px; color:#555; }
 .price-input { width:100%; padding:5px 6px; border:1px solid #ddd; border-radius:4px; font-size:12px; font-family:inherit; text-align:right; background:#fffde7; }
 .price-input:focus { outline:none; border-color:var(--green-mid); }
 
@@ -83,7 +84,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
 <div class="app">
 
   <div class="top-bar">
-    <h1>📊 정산 보고서<span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:10px;">V 0.610.0</span></h1>
+    <h1>📊 정산 보고서</h1>
     <div class="top-links">
       <a href="index.html">📋 일보</a>
       <button onclick="openReportHelp()" style="color:rgba(255,255,255,0.75);font-size:12px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:4px;padding:3px 10px;margin-left:6px;cursor:pointer;font-family:inherit;">📖 도움말</button>
@@ -414,7 +415,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     const logs = getDailyLogs();
     // 저장된 단가 + 현재 화면에 입력된 단가 병합 (재정산 시 입력값 보존)
     const prices = getPrices();
-    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
+    document.querySelectorAll('#man-body tr[data-type="man"], #man-body tr[data-type="man-detail"]').forEach(tr => {
       const val = parseFloat(tr.querySelector('.price-input')?.value);
       if (val && tr.dataset.key) prices.man[tr.dataset.key] = val;
     });
@@ -435,18 +436,49 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
 
     if (!filtered.length) { showToast('해당 기간에 저장된 일보가 없습니다.'); return; }
 
-    // 인력 집계 (성명+직종 기준)
-    const manMap = {};
-    filtered.forEach(([date, log]) => {
-      (log.man||[]).forEach(m => {
-        if (!m.name && !m.job) return;
-        const key = (m.name||'미입력') + '||' + (m.job||'');
-        if (!manMap[key]) manMap[key] = { job:m.job||'', name:m.name||'미입력', gongsu:0, days:0 };
-        const g = parseFloat(m.gongsu||0);
-        manMap[key].gongsu += g;
-        if (g > 0) manMap[key].days++;
+    // 인력 집계
+    let manRows;
+    if (proj) {
+      // 공사명 선택 시: 성명+직종별 합산
+      const manMap = {};
+      filtered.forEach(([date, log]) => {
+        (log.man||[]).forEach(m => {
+          if (!m.name && !m.job) return;
+          const key = (m.name||'미입력') + '||' + (m.job||'');
+          if (!manMap[key]) manMap[key] = { job:m.job||'', name:m.name||'미입력', gongsu:0, days:0, directAmount:0, projPrices:{} };
+          const g = parseFloat(m.gongsu||0);
+          manMap[key].gongsu += g;
+          if (g > 0) manMap[key].days++;
+          const logProj = log.project || '';
+          const unitPrice = parseFloat(m.price||0) ||
+            (logProj ? (prices.man[`${logProj}||${m.name}`] || prices.man[m.name||''] || 0)
+                     : (prices.man[m.name||''] || 0));
+          if (unitPrice > 0) {
+            manMap[key].directAmount += unitPrice * g;
+            if (logProj) manMap[key].projPrices[logProj] = unitPrice;
+          }
+        });
       });
-    });
+      manRows = Object.values(manMap);
+    } else {
+      // 전체 조회: 공사명+성명+직종별 세부 행
+      const detailMap = {};
+      filtered.forEach(([date, log]) => {
+        (log.man||[]).forEach(m => {
+          if (!m.name && !m.job) return;
+          const logProj = log.project || '(공사명 없음)';
+          const key = logProj + '||' + (m.name||'미입력') + '||' + (m.job||'');
+          if (!detailMap[key]) detailMap[key] = { job:m.job||'', name:m.name||'미입력', proj:logProj, gongsu:0, days:0, unitPrice:0 };
+          const g = parseFloat(m.gongsu||0);
+          detailMap[key].gongsu += g;
+          if (g > 0) detailMap[key].days++;
+          const unitPrice = parseFloat(m.price||0) ||
+            (prices.man[`${logProj}||${m.name}`] || prices.man[m.name||''] || 0);
+          if (unitPrice > 0) detailMap[key].unitPrice = unitPrice;
+        });
+      });
+      manRows = Object.values(detailMap);
+    }
 
     // 장비 집계 (장비명+규격 기준)
     const eqMap = {};
@@ -477,10 +509,15 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
         <div style="font-size:12px;color:#555;">공사명: ${proj||'전체'}${companyStr ? ' &nbsp;|&nbsp; 시공사: '+companyStr : ''} &nbsp;|&nbsp; 기간: ${dateRange}</div>
       </div>`;
 
-    const manRows = Object.values(manMap);
-    const eqRows  = Object.values(eqMap);
+    const eqRows = Object.values(eqMap);
     setTimeout(() => {
-      renderManTable(manRows, prices);
+      if (proj) {
+        setManTableHeader(true);
+        renderManTable(manRows, prices, proj);
+      } else {
+        setManTableHeader(false);
+        renderManTableAll(manRows);
+      }
       renderEqTable(eqRows, prices);
       updateSummary();
       // Electron: 렌더링 완료 후 result-area로 포커스 이동 → price-input 첫 클릭 즉시 반응
@@ -490,25 +527,43 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     }, 0);
   }
 
-  function renderManTable(rows, prices) {
+  function renderManTable(rows, prices, proj) {
     const tbody = document.getElementById('man-body');
     const frag = document.createDocumentFragment();
     rows.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
-      const priceKey = r.name;
-      const saved = prices.man[priceKey] || '';
+      // 공사명별 단가 우선, 없으면 공통 단가로 폴백
+      const priceKey = proj ? `${proj}||${r.name}` : r.name;
+      const saved = prices.man[priceKey] || prices.man[r.name] || '';
       const savedNum = parseFloat(saved) || 0;
       const gongsuStr = r.gongsu % 1 === 0 ? r.gongsu.toFixed(0) : r.gongsu.toFixed(1);
-      const amt = savedNum * r.gongsu;
+      // 전체 조회 시 일보에 저장된 단가 기준 금액 우선 (공사명별 단가가 다를 수 있음)
+      const hasDirect = !proj && r.directAmount > 0;
+      const amt = hasDirect ? r.directAmount : savedNum * r.gongsu;
       const amtStr = amt > 0 ? fmt(amt) + ' 원' : '';
+
+      // 공사명별 단가 배지 생성 (전체 조회 + 단가가 2개 이상 다를 때)
+      const projEntries = Object.entries(r.projPrices || {});
+      const prices2 = [...new Set(projEntries.map(([,v])=>v))];
+      const hasMixed = hasDirect && projEntries.length > 1 && prices2.length > 1;
+      const badgeHtml = hasMixed
+        ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;">` +
+          projEntries.map(([p,v]) =>
+            `<span style="font-size:10px;background:#d8f3dc;border-radius:3px;padding:1px 5px;color:#1a3a2a;white-space:nowrap;">${p}<br><b>${fmt(v)}</b></span>`
+          ).join('') + `</div>`
+        : '';
+      const inputStyle = hasMixed && !saved ? 'background:#f5f5f5;color:#999;font-size:11px;' : '';
+      const placeholder = hasMixed ? '공사별 상이' : '단가 입력';
+
       const tr = document.createElement('tr');
       tr.dataset.type = 'man';
       tr.dataset.key = priceKey;
+      tr.dataset.directAmount = hasDirect ? r.directAmount : '';
       tr.innerHTML = `
         <td class="left">${r.job}</td>
         <td class="left">${r.name}</td>
         <td>${gongsuStr}</td>
         <td>${r.days}</td>
-        <td><input class="price-input" type="text" placeholder="단가 입력" value="${saved}" onchange="recalcRow(this)" oninput="recalcRow(this)"></td>
+        <td><input class="price-input" type="text" placeholder="${placeholder}" value="${saved}" onchange="recalcRow(this)" oninput="recalcRow(this)" style="${inputStyle}">${badgeHtml}</td>
         <td class="amount-cell" style="font-weight:700;">${amtStr}</td>
         <td></td>`;
       frag.appendChild(tr);
@@ -551,27 +606,124 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     tbody.appendChild(frag);
   }
 
+  function setManTableHeader(isProj) {
+    const tr = document.querySelector('#man-tbl thead tr');
+    if (isProj) {
+      tr.innerHTML = `
+        <th style="width:12%">직종</th>
+        <th style="width:14%">성명</th>
+        <th style="width:9%">공수</th>
+        <th style="width:9%">횟수/건수</th>
+        <th style="width:18%">단가 (원/일)</th>
+        <th style="width:18%">금액 (원)</th>
+        <th style="width:20%">비고</th>`;
+    } else {
+      tr.innerHTML = `
+        <th style="width:22%">공사명</th>
+        <th style="width:10%">직종</th>
+        <th style="width:13%">성명</th>
+        <th style="width:8%">공수</th>
+        <th style="width:17%">단가 (원/일)</th>
+        <th style="width:17%">금액 (원)</th>
+        <th style="width:13%">비고</th>`;
+    }
+  }
+
+  function renderManTableAll(rows) {
+    // 성명+직종 기준 그룹 → 공사명순 정렬
+    rows.sort((a,b) => a.name.localeCompare(b.name) || a.job.localeCompare(b.job) || a.proj.localeCompare(b.proj));
+    const groups = {};
+    const order = [];
+    rows.forEach(r => {
+      const k = r.name + '||' + r.job;
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(r);
+    });
+
+    const tbody = document.getElementById('man-body');
+    const frag = document.createDocumentFragment();
+
+    order.forEach(k => {
+      const grp = groups[k];
+      grp.forEach(r => {
+        const gStr = r.gongsu % 1 === 0 ? r.gongsu.toFixed(0) : r.gongsu.toFixed(1);
+        const amt = r.unitPrice * r.gongsu;
+        const amtStr = amt > 0 ? fmt(amt) + ' 원' : '';
+        const priceKey = `${r.proj}||${r.name}`;
+        const tr = document.createElement('tr');
+        tr.dataset.type = 'man-detail';
+        tr.dataset.key = priceKey;
+        tr.dataset.gongsu = r.gongsu;
+        tr.dataset.directAmount = amt > 0 ? amt : '';
+        tr.innerHTML = `
+          <td class="left" style="color:#1a5c35;font-weight:600;">${r.proj}</td>
+          <td class="left">${r.job}</td>
+          <td class="left">${r.name}</td>
+          <td>${gStr}</td>
+          <td><input class="price-input" type="text" value="${r.unitPrice||''}" placeholder="단가" onchange="recalcRow(this)" oninput="recalcRow(this)"></td>
+          <td class="amount-cell" style="font-weight:700;">${amtStr}</td>
+          <td></td>`;
+        frag.appendChild(tr);
+      });
+
+      // 인원 소계 (공사명 2개 이상인 경우)
+      if (grp.length > 1) {
+        const totalG = grp.reduce((s,r)=>s+r.gongsu, 0);
+        const totalA = grp.reduce((s,r)=>s+(r.unitPrice*r.gongsu), 0);
+        const gStr = totalG % 1 === 0 ? totalG.toFixed(0) : totalG.toFixed(1);
+        const sub = document.createElement('tr');
+        sub.dataset.type = 'man-person-sub';
+        sub.className = 'man-person-sub';
+        sub.innerHTML = `
+          <td colspan="3" style="text-align:right;padding-right:12px;">└ ${grp[0].job} ${grp[0].name} 소계</td>
+          <td style="font-weight:700;">${gStr}</td>
+          <td></td>
+          <td style="font-weight:700;color:#1a3a2a;">${fmt(totalA)} 원</td>
+          <td></td>`;
+        frag.appendChild(sub);
+      }
+    });
+
+    // 전체 인력 소계
+    const totalG = rows.reduce((s,r)=>s+r.gongsu, 0);
+    const totalA = rows.reduce((s,r)=>s+(r.unitPrice*r.gongsu), 0);
+    const gStr = totalG % 1 === 0 ? totalG.toFixed(0) : totalG.toFixed(1);
+    const sub = document.createElement('tr');
+    sub.className = 'subtotal';
+    sub.id = 'man-subtotal';
+    sub.innerHTML = `<td colspan="5" style="text-align:right;">인력 소계</td><td id="man-sub-amt" style="font-weight:700;">${fmt(totalA)} 원</td><td></td>`;
+    frag.appendChild(sub);
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+  }
+
   function recalcRow(input) {
     if (!input) return;
     const tr = input.closest('tr');
     if (!tr) return;
     const price = parseFloat(input.value) || 0;
-    const qty = parseFloat((tr.querySelectorAll('td')[2]?.textContent||'')) || 0;
+    // man-detail 행은 dataset.gongsu 사용, proj 뷰는 td[2]
+    const qty = parseFloat(tr.dataset.gongsu) || parseFloat((tr.querySelectorAll('td')[2]?.textContent||'')) || 0;
+    if (price > 0) tr.dataset.directAmount = '';
     const amt = price * qty;
-
     const amtCell = tr.querySelector('.amount-cell');
     if (amtCell) amtCell.textContent = amt > 0 ? fmt(amt) + ' 원' : '';
-
     updateSummary();
   }
 
   function updateSummary() {
     let manTotal = 0, eqTotal = 0;
 
-    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
-      const price = parseFloat(tr.querySelector('.price-input').value) || 0;
-      const qty = parseFloat(tr.querySelectorAll('td')[2].textContent) || 0;
-      manTotal += price * qty;
+    // man-detail(전체뷰) + man(공사명뷰) 합산, man-person-sub(인원소계)는 제외
+    document.querySelectorAll('#man-body tr[data-type="man"], #man-body tr[data-type="man-detail"]').forEach(tr => {
+      const direct = parseFloat(tr.dataset.directAmount) || 0;
+      if (direct > 0) {
+        manTotal += direct;
+      } else {
+        const price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
+        const qty = parseFloat(tr.dataset.gongsu) || parseFloat(tr.querySelectorAll('td')[2]?.textContent) || 0;
+        manTotal += price * qty;
+      }
     });
     document.querySelectorAll('#eq-body tr[data-type="eq"]').forEach(tr => {
       const direct = parseFloat(tr.querySelector('.amount-direct')?.value) || 0;
@@ -605,8 +757,9 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
   function exportExcel() {
     if (!window.XLSX) {
       const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
+      s.src = 'xlsx.full.min.js';
       s.onload = () => exportExcel();
+      s.onerror = () => alert('xlsx.full.min.js 파일을 찾을 수 없습니다.');
       document.head.appendChild(s);
       return;
     }
@@ -619,19 +772,33 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     const wb = XLSX.utils.book_new();
 
     // ── 인력 정산 시트 ──
+    // 전체 뷰는 man-detail 행, 개별 프로젝트 뷰는 man 행 사용
+    const isAllView = !document.getElementById('r-project').value;
+    const manSelector = isAllView
+      ? '#man-body tr[data-type="man-detail"]'
+      : '#man-body tr[data-type="man"]';
+    const manHeader = isAllView
+      ? ['공사명', '직종', '성명', '공수', '단가(원)', '금액(원)']
+      : ['직종', '성명', '공수', '단가(원)', '금액(원)'];
     const manRows = [['공사명: ' + proj + '  기간: ' + (from||'전체') + ' ~ ' + (to||'전체')], [],
-      ['직종', '성명', '공수', '단가(원)', '금액(원)']];
+      manHeader];
     let manTotal = 0;
-    document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
+    document.querySelectorAll(manSelector).forEach(tr => {
       const tds = tr.querySelectorAll('td');
       const price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
-      const gongsu = parseFloat(tds[2]?.textContent) || 0;
+      const gongsu = parseFloat(tr.dataset.gongsu) || parseFloat(tds[isAllView?3:2]?.textContent) || 0;
       const amt = price * gongsu;
       manTotal += amt;
-      manRows.push([tds[0]?.textContent, tds[1]?.textContent, gongsu, price, amt]);
+      if (isAllView) {
+        manRows.push([tds[0]?.textContent, tds[1]?.textContent, tds[2]?.textContent, gongsu, price, amt]);
+      } else {
+        manRows.push([tds[0]?.textContent, tds[1]?.textContent, gongsu, price, amt]);
+      }
     });
     manRows.push([]);
-    manRows.push(['', '', '', '인력 소계', manTotal]);
+    // 전체 뷰는 6열(공사명 포함), 개별 뷰는 5열 → 금액 열 위치 맞춤
+    if (isAllView) manRows.push(['', '', '', '', '인력 소계', manTotal]);
+    else           manRows.push(['', '', '', '인력 소계', manTotal]);
 
     // ── 장비 정산 시트 ──
     const eqRows = [['공사명: ' + proj + '  기간: ' + (from||'전체') + ' ~ ' + (to||'전체')], [],
@@ -668,11 +835,18 @@ body { font-family:'Noto Sans KR',sans-serif; background:#f5f5f0; color:#111; fo
     XLSX.utils.book_append_sheet(wb, wsSum, '합계');
 
     const fname = `정산보고서_${proj}_${new Date().toISOString().slice(0,10)}.xlsx`;
-    XLSX.writeFile(wb, fname);
+    // Electron은 nodeIntegration 없으므로 Blob 다운로드 방식 사용
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function savePrices() {
-    const prices = { man:{}, eq:{} };
+    const existing = JSON.parse(localStorage.getItem('unit_prices')||'{"man":{},"eq":{}}');
+    const prices = { man: Object.assign({}, existing.man), eq: Object.assign({}, existing.eq) };
     document.querySelectorAll('#man-body tr[data-type="man"]').forEach(tr => {
       const val = parseFloat(tr.querySelector('.price-input').value);
       if (val) prices.man[tr.dataset.key] = val;

@@ -8,7 +8,8 @@ const FILES = [
   '/flatpickr.min.js',
   '/icon.svg',
   '/manifest.json',
-  '/manifest-pc.json'
+  '/manifest-pc.json',
+  '/xlsx.full.min.js'
 ];
 
 self.addEventListener('install', e => {
