@@ -1,4 +1,4 @@
-const CACHE = 'workdaily-v1';
+const CACHE = 'workdaily-v2';
 const FILES = [
   '/',
   '/index.html',
